@@ -1,8 +1,8 @@
 # encoding=utf-8
 from .interfaces import IVoting
+from BTrees.OIBTree import OIBTree
+from BTrees.OOBTree import OOBTree
 from hashlib import md5
-from persistent.dict import PersistentDict
-from persistent.list import PersistentList
 from zope.annotation.interfaces import IAnnotations
 from zope.interface import implementer
 
@@ -15,10 +15,7 @@ class Vote(object):
         self.context = context
         annotations = IAnnotations(context)
         if KEY not in annotations.keys():
-            annotations[KEY] = PersistentDict({
-                "voted": PersistentList(),
-                'votes': PersistentDict()
-                })
+            self.clear()
         self.annotations = annotations[KEY]
 
     @property
@@ -44,7 +41,9 @@ class Vote(object):
         if self.already_voted(request):
             raise KeyError("You may not vote twice")
         vote = int(vote)
-        self.annotations['voted'].append(self._hash(request))
+        self.annotations['voted'].insert(
+            self._hash(request), 
+            len(self.annotations['voted']))
         votes = self.annotations['votes']
         if vote not in votes:
             votes[vote] = 1
@@ -67,7 +66,7 @@ class Vote(object):
 
     def clear(self):
         annotations = IAnnotations(self.context)
-        annotations[KEY] = PersistentDict(
-            {'voted': PersistentList(), 'votes': PersistentDict()}
-        )
+        annotations[KEY] = OOBTree()
+        annotations[KEY]['voted'] = OIBTree()
+        annotations[KEY]['votes'] = OOBTree()
         self.annotations = annotations[KEY]
